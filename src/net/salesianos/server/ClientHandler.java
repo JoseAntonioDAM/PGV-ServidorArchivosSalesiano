@@ -7,6 +7,8 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.Socket;
 
+import net.salesianos.common.FileInfo;
+
 public class ClientHandler implements Runnable {
 
     private Socket clientSocket;
