@@ -4,8 +4,7 @@ package net.salesianos.client;
 import java.io.*;
 import java.net.Socket;
 
-import net.salesianos.common.*;
-
+import net.salesianos.common.FileInfo;
 public class FileClient {
 
     private String host;

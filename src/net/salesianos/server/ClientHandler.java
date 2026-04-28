@@ -1,20 +1,17 @@
 package net.salesianos.server;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
-import java.net.Socket;
-
 import net.salesianos.common.FileInfo;
+
+import java.io.*;
+import java.net.Socket;
+import java.util.function.Consumer;
 
 public class ClientHandler implements Runnable {
 
     private Socket clientSocket;
     private String filesFolder;
 
-    public ClientHandler(Socket clientSocket, String filesFolder) {
+    public ClientHandler(Socket clientSocket, String filesFolder, Consumer<String> logger) {
         this.clientSocket = clientSocket;
         this.filesFolder = filesFolder;
     }
@@ -24,8 +21,8 @@ public class ClientHandler implements Runnable {
         System.out.println("Cliente conectado: " + clientSocket.getInetAddress());
 
         try (
-            ObjectOutputStream oos = new ObjectOutputStream(clientSocket.getOutputStream());
-            ObjectInputStream ois = new ObjectInputStream(clientSocket.getInputStream());
+                ObjectOutputStream oos = new ObjectOutputStream(clientSocket.getOutputStream());
+                ObjectInputStream ois = new ObjectInputStream(clientSocket.getInputStream());
         ) {
             String requestedFile = (String) ois.readObject();
             System.out.println("Fichero solicitado: " + requestedFile);
