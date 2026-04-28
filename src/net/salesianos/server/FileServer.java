@@ -8,7 +8,7 @@ import java.util.function.Consumer;
 public class FileServer {
 
     private static final int PORT = 5000;
-    private static final String FILES_FOLDER = "server-files";
+    private static final String FILES_FOLDER = "files";
 
     private ServerSocket serverSocket;
     private boolean running = false;

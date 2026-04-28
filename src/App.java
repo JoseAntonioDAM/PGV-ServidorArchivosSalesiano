@@ -1,5 +1,6 @@
 
 import net.salesianos.client.FileClient;
+import net.salesianos.server.FileServer;
 
 import java.util.Scanner;
 
