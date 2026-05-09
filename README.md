@@ -1,18 +1,14 @@
-## Getting Started
+# Servidor de Archivos PGV — Seguridad
+## Aplicación cliente-servidor en Java para transferencia de ficheros con comunicación cifrada mediante AES.
 
-Welcome to the VS Code Java world. Here is a guideline to help you get started to write Java code in Visual Studio Code.
+# Ejercicios: 
+- [Análisis del tráfico sin cifrar (Wireshark)](docs/wireshark-sin-cifrar.md)
+- [Implementación del cifrado AES](docs/cifrado-aes.md)
+- [Análisis del tráfico cifrado (Wireshark)](docs/wireshark-cifrado.md)
+- [Esquema de seguridad basado en roles](docs/roles.md)
 
-## Folder Structure
+# Tecnologías de seguridad utilizadas
 
-The workspace contains two folders by default, where:
-
-- `src`: the folder to maintain sources
-- `lib`: the folder to maintain dependencies
-
-Meanwhile, the compiled output files will be generated in the `bin` folder by default.
-
-> If you want to customize the folder structure, open `.vscode/settings.json` and update the related settings there.
-
-## Dependency Management
-
-The `JAVA PROJECTS` view allows you to manage your dependencies. More details can be found [here](https://github.com/microsoft/vscode-java-dependency#manage-dependencies).
+## Algoritmo: AES (Advanced Encryption Standard) — cifrado simétrico de 128 bits
+## Clase responsable: CryptoUtils.java
+## Datos cifrados: nombre del fichero solicitado + bytes del fichero transferido
