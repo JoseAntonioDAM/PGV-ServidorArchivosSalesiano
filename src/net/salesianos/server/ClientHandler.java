@@ -1,13 +1,10 @@
 package net.salesianos.server;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
+import java.io.*;
 import java.net.Socket;
 import java.util.function.Consumer;
 
+import net.salesianos.common.CryptoUtils;
 import net.salesianos.common.FileInfo;
 
 public class ClientHandler implements Runnable {
@@ -25,42 +22,49 @@ public class ClientHandler implements Runnable {
         System.out.println("Cliente conectado: " + clientSocket.getInetAddress());
 
         try (
-            ObjectOutputStream oos = new ObjectOutputStream(clientSocket.getOutputStream());
-            ObjectInputStream ois = new ObjectInputStream(clientSocket.getInputStream());
+                DataOutputStream dos = new DataOutputStream(clientSocket.getOutputStream());
+                DataInputStream dis = new DataInputStream(clientSocket.getInputStream());
         ) {
-            String requestedFile = (String) ois.readObject();
-            System.out.println("Fichero solicitado: " + requestedFile);
+            // 1. Leer nombre del fichero CIFRADO
+            int encNameLength = dis.readInt();
+            byte[] encName = new byte[encNameLength];
+            dis.readFully(encName);
+            String requestedFile = CryptoUtils.decryptToString(encName);
+            System.out.println("Fichero solicitado (descifrado): " + requestedFile);
 
             File file = new File(filesFolder + File.separator + requestedFile);
 
+            // 2. Enviar si existe o no (cifrado también)
             if (!file.exists() || !file.isFile()) {
-                oos.writeObject(new FileInfo(requestedFile, 0, false));
-                oos.flush();
+                byte[] encResponse = CryptoUtils.encryptString("NOT_FOUND");
+                dos.writeInt(encResponse.length);
+                dos.write(encResponse);
+                dos.flush();
                 System.out.println("Fichero no encontrado: " + requestedFile);
                 return;
             }
 
-            oos.writeObject(new FileInfo(file.getName(), file.length(), true));
-            oos.flush();
+            // 3. Enviar confirmación de que existe
+            byte[] encFound = CryptoUtils.encryptString("FOUND:" + file.getName() + ":" + file.length());
+            dos.writeInt(encFound.length);
+            dos.write(encFound);
+            dos.flush();
 
-            // Enviar los bytes del fichero
-            try (FileInputStream fis = new FileInputStream(file)) {
-                byte[] buffer = new byte[4096];
-                int bytesRead;
-                while ((bytesRead = fis.read(buffer)) != -1) {
-                    oos.write(buffer, 0, bytesRead);
-                }
-                oos.flush();
-            }
+            // 4. Leer los bytes del fichero, cifrarlos y enviarlos
+            byte[] fileBytes = new FileInputStream(file).readAllBytes();
+            byte[] encFileBytes = CryptoUtils.encrypt(fileBytes);
 
-            System.out.println("Fichero enviado correctamente: " + requestedFile);
+            dos.writeInt(encFileBytes.length);
+            dos.write(encFileBytes);
+            dos.flush();
 
-        } catch (IOException | ClassNotFoundException e) {
+            System.out.println("Fichero enviado cifrado: " + requestedFile);
+
+        } catch (Exception e) {
             System.out.println("Error con cliente: " + e.getMessage());
         } finally {
             try {
                 clientSocket.close();
-                System.out.println("Conexión cerrada: " + clientSocket.getInetAddress());
             } catch (IOException e) {
                 System.out.println("Error cerrando socket: " + e.getMessage());
             }

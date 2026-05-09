@@ -1,10 +1,11 @@
 package net.salesianos.client;
 
-
 import java.io.*;
 import java.net.Socket;
 
+import net.salesianos.common.CryptoUtils;
 import net.salesianos.common.FileInfo;
+
 public class FileClient {
 
     private String host;
@@ -19,51 +20,55 @@ public class FileClient {
 
     public FileInfo requestFile(String fileName, ProgressListener listener) {
         try (
-            Socket socket = new Socket(host, port);
-            ObjectOutputStream oos = new ObjectOutputStream(socket.getOutputStream());
-            ObjectInputStream ois = new ObjectInputStream(socket.getInputStream());
+                Socket socket = new Socket(host, port);
+                DataOutputStream dos = new DataOutputStream(socket.getOutputStream());
+                DataInputStream dis = new DataInputStream(socket.getInputStream());
         ) {
-            // 1. Enviar nombre del fichero al servidor
-            oos.writeObject(fileName);
-            oos.flush();
+            // 1. Enviar nombre del fichero CIFRADO
+            byte[] encName = CryptoUtils.encryptString(fileName);
+            dos.writeInt(encName.length);
+            dos.write(encName);
+            dos.flush();
 
-            // 2. Recibir FileInfo del servidor
-            FileInfo fileInfo = (FileInfo) ois.readObject();
+            // 2. Recibir respuesta cifrada del servidor
+            int respLength = dis.readInt();
+            byte[] encResp = new byte[respLength];
+            dis.readFully(encResp);
+            String response = CryptoUtils.decryptToString(encResp);
 
-            if (!fileInfo.isExists()) {
-                System.out.println("El fichero no existe en el servidor.");
-                return fileInfo;
+            if (response.equals("NOT_FOUND")) {
+                return new FileInfo(fileName, 0, false);
             }
 
-            // 3. Crear carpeta downloads si no existe
+            // Parsear FOUND:nombre:tamaño
+            String[] parts = response.split(":");
+            String name = parts[1];
+            long size = Long.parseLong(parts[2]);
+
+            // 3. Recibir bytes del fichero CIFRADOS y descifrarlos
+            int encFileLength = dis.readInt();
+            byte[] encFileBytes = new byte[encFileLength];
+            dis.readFully(encFileBytes);
+
+            if (listener != null) listener.onProgress(50);
+
+            byte[] fileBytes = CryptoUtils.decrypt(encFileBytes);
+
+            // 4. Guardar el fichero descifrado
             File folder = new File(downloadsFolder);
             if (!folder.exists()) folder.mkdirs();
 
-            // 4. Recibir bytes y guardar el fichero
-            File outputFile = new File(downloadsFolder + File.separator + fileInfo.getFileName());
+            File outputFile = new File(downloadsFolder + File.separator + name);
             try (FileOutputStream fos = new FileOutputStream(outputFile)) {
-                byte[] buffer = new byte[4096];
-                int bytesRead;
-                long totalReceived = 0;
-
-                while (totalReceived < fileInfo.getFileSize()) {
-                    bytesRead = ois.read(buffer);
-                    if (bytesRead == -1) break;
-                    fos.write(buffer, 0, bytesRead);
-                    totalReceived += bytesRead;
-
-                    // Notificar progreso a la GUI
-                    if (listener != null) {
-                        int progress = (int) ((totalReceived * 100) / fileInfo.getFileSize());
-                        listener.onProgress(progress);
-                    }
-                }
+                fos.write(fileBytes);
             }
 
-            System.out.println("Fichero descargado: " + outputFile.getAbsolutePath());
-            return fileInfo;
+            if (listener != null) listener.onProgress(100);
 
-        } catch (IOException | ClassNotFoundException e) {
+            System.out.println("Fichero descargado y descifrado: " + outputFile.getAbsolutePath());
+            return new FileInfo(name, size, true);
+
+        } catch (Exception e) {
             System.out.println("Error en cliente: " + e.getMessage());
             return null;
         }
